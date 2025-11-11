@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.orm import Session
-from .. import crud, schemas
+from .. import crud, schemas, models
 from ..database import SessionLocal, init_db
 
 router = APIRouter()
@@ -21,14 +21,28 @@ def on_startup():
     init_db()
 
 
-@router.get("/alunos", response_model=List[schemas.AlunoRead])
-def read_alunos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_alunos(db, skip=skip, limit=limit)
+@router.get("/clientes", response_model=List[schemas.ClienteRead])
+def read_clientes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_clientes(db, skip=skip, limit=limit)
 
 
-@router.post("/alunos", response_model=schemas.AlunoRead, status_code=status.HTTP_201_CREATED)
-def create_aluno(aluno: schemas.AlunoCreate, db: Session = Depends(get_db)):
-    existing = db.query(crud.models.Aluno).filter(crud.models.Aluno.email == aluno.email).first()
+@router.post("/clientes", response_model=schemas.ClienteRead, status_code=status.HTTP_201_CREATED)
+def create_cliente(cliente: schemas.ClienteCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.Cliente).filter(models.Cliente.email == cliente.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
-    return crud.create_aluno(db, aluno)
+    return crud.create_cliente(db, cliente)
+
+
+@router.get("/pets", response_model=List[schemas.PetRead])
+def read_pets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_pets(db, skip=skip, limit=limit)
+
+
+@router.post("/pets", response_model=schemas.PetRead, status_code=status.HTTP_201_CREATED)
+def create_pet(pet: schemas.PetCreate, db: Session = Depends(get_db)):
+    # verify owner exists
+    owner = crud.get_cliente(db, pet.cliente_id)
+    if not owner:
+        raise HTTPException(status_code=400, detail="Cliente (owner) não encontrado")
+    return crud.create_pet(db, pet)
