@@ -18,7 +18,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@db:5432/postgres"
+      DATABASE_URL: "postgresql://user:password@db:5432/cruddb"
       FRONTEND_ORIGIN: "http://localhost:5500"
     ports:
       - "8000:8000"
