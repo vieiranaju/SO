@@ -1,67 +1,16 @@
 version: '3.8'
 
 services:
-  # --- Serviço do PostgreSQL ---
-  db-postgres:
-    image: postgres:15-alpine  # Você pode escolher a versão que quiser
-    container_name: SOWeb_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: 12345
-      POSTGRES_DB: petshop
-    ports:
-      - "5432:5432" # Expõe a porta 5432 do container para a porta 5432 da sua máquina
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-
-    # --- Serviço do pgAdmin ---
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: meu_pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@email.com  # Email que você usará para logar
-      PGADMIN_DEFAULT_PASSWORD: senha_forte_pgadmin # Senha que você usará para logar
-    ports:
-      - "5050:80" # Você vai acessar o pgAdmin pela porta 5050 da sua máquina
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    depends_on:
-      - db-postgres # Garante que o pgAdmin inicie depois do banco
-
-  # --- Serviço do seu Backend (Exemplo) ---
-  # Descomente e ajuste esta parte quando seu backend estiver "dockerizado"
-  # meu-backend:
-  #   build: . # Assume que existe um 'Dockerfile' na raiz
-  #   container_name: meu_backend_api
-  #   ports:
-  #     - "8080:8080" # Mapeia a porta do seu app (ex: 8080)
-  #   environment:
-  #     # Passa as URLs de conexão para seu app
-  #     DB_PG_URL: jdbc:postgresql://db-postgres:5432/minha_api_db_pg
-  #     DB_PG_USER: admin_pg
-  #     DB_PG_PASS: senha_forte_pg
-  #     DB_MYSQL_URL: jdbc:mysql://db-mysql:3306/minha_api_db_mysql
-  #     DB_MYSQL_USER: admin_mysql
-  #     DB_MYSQL_PASS: senha_forte_mysql
-  #   depends_on:
-  #     - db-postgres # Garante que os bancos iniciem antes do seu backend
-  #     - db-mysql
-
-  # Serviço do Backend (API Python)
-  backend:
-    build: .
-    container_name: petshop_backend
+  # Serviço do Backend Node (Express + Prisma + SQLite)
+  node-backend:
+    build: ./petshop-backend
+    container_name: petshop_node_backend
     restart: always
     ports:
-      - "8000:8000"
+      - "3000:3000"
+    # No bind-mount here so the container uses the image's installed dependencies
     environment:
-      DATABASE_URL: "postgresql://admin:12345@db-postgres:5432/petshop"
-    volumes:
-      - ./:/app:cached
-    depends_on:
-      - db-postgres
+      NODE_ENV: production
 
   # Serviço da View (frontend estático servido por nginx)
   frontend:
@@ -73,10 +22,7 @@ services:
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
     depends_on:
-      - backend
+      - node-backend
 
-# --- Volumes ---
-# Isso garante que seus dados não sejam perdidos quando você parar os containers
-volumes:
-  postgres-data:
-  pgadmin-data:
+# Volumes: nenhum volume externo necessário para SQLite (o arquivo `prisma/dev.db` está versionado no repo)
+volumes: {}

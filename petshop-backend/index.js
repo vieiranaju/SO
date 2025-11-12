@@ -1,12 +1,46 @@
 // index.js
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
+const path = require('path');
 
 // --- Inicialização ---
 const prisma = new PrismaClient();
 const app = express();
 app.use(express.json()); // Habilita o Express para ler JSON
+// Simple CORS middleware to allow frontend (nginx) to call the API
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    return res.sendStatus(200);
+  }
+  next();
+});
 const PORT = 3000;
+
+// Simple JSON store for 'vacinas' to avoid changing the Prisma schema in this iteration
+const VACINAS_FILE = path.join(__dirname, 'vacinas.json');
+
+function readVacinas() {
+  try {
+    if (!fs.existsSync(VACINAS_FILE)) return [];
+    const raw = fs.readFileSync(VACINAS_FILE, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (e) {
+    console.error('Erro lendo vacinas.json:', e);
+    return [];
+  }
+}
+
+function writeVacinas(list) {
+  try {
+    fs.writeFileSync(VACINAS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro escrevendo vacinas.json:', e);
+  }
+}
 
 // CREATE pets
 app.post('/pets', async (req, res) => {
@@ -168,6 +202,52 @@ app.delete('/agendamentos/:id', async (req, res) => {
     res.status(204).send(); // Sucesso, sem conteúdo
   } catch (error) {
     res.status(404).json({ error: 'Agendamento não encontrado' });
+  }
+});
+
+// --- V A C I N A S  (persistência simples via JSON) ---
+// GET /vacinas
+app.get('/vacinas', (req, res) => {
+  const list = readVacinas();
+  res.json(list);
+});
+
+// POST /vacinas
+app.post('/vacinas', (req, res) => {
+  try {
+    const { petNome, nomeVacina, dataAplicacao, proximaDose } = req.body;
+    if (!petNome || !nomeVacina || !dataAplicacao) {
+      return res.status(400).json({ error: 'Campos obrigatórios: petNome, nomeVacina, dataAplicacao' });
+    }
+    const list = readVacinas();
+    const id = list.length ? (list[list.length - 1].id + 1) : 1;
+    const item = {
+      id,
+      petNome,
+      nomeVacina,
+      dataAplicacao: dataAplicacao,
+      proximaDose: proximaDose || null
+    };
+    list.push(item);
+    writeVacinas(list);
+    res.status(201).json(item);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /vacinas/:id
+app.delete('/vacinas/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let list = readVacinas();
+    const idx = list.findIndex(v => v.id === parseInt(id));
+    if (idx === -1) return res.status(404).json({ error: 'Registro não encontrado' });
+    list.splice(idx, 1);
+    writeVacinas(list);
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

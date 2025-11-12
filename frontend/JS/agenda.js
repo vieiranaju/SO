@@ -97,71 +97,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- [ 3. FUNÇÃO: ATUALIZAR HORÁRIOS (SIMULAÇÃO) ] ---
-    function atualizarHorarios(data) {
-        // Formata a data para o título (ex: 11/11/2025)
+    async function atualizarHorarios(data) {
+        // Formata a data para o título (ex: 11 de novembro de 2025)
         const diaFormatado = data.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
         horariosTitulo.textContent = `Horários para ${diaFormatado}`;
-        
+
         // Limpa a lista de horários anterior
         horariosLista.innerHTML = '';
 
-        // *** AQUI ENTRA O BACK-END ***
-        // No futuro, aqui você faria uma chamada (fetch) ao back-end
-        // perguntando: "Quais os horários para o dia ${data}?"
-        
-        // Por enquanto, vamos SIMULAR os dados:
-        const horariosSimulados = [
-            { hora: '09:00', pet: 'Max (Golden)', servico: 'Banho e Tosa', vago: false },
-            { hora: '10:30', pet: 'Luna (Poodle)', servico: 'Banho', vago: false },
-            { hora: '14:00', pet: 'Horário Vago', servico: '', vago: true },
-            { hora: '15:00', pet: 'Horário Vago', servico: '', vago: true },
-        ];
+        // Monta data ISO para comparação (YYYY-MM-DD)
+        const dataISO = data.toISOString().split('T')[0];
 
-        if (data.getDay() === 0) { // Domingo
-             horariosLista.innerHTML = '<p>Estamos fechados aos domingos.</p>';
-             return;
+        // Busca agendamentos reais do backend
+        let horariosReais = [];
+        try {
+            const res = await fetch('http://localhost:3000/agendamentos');
+            if (res.ok) {
+                const all = await res.json();
+                horariosReais = all.filter(a => a.dataHora.startsWith(dataISO));
+            }
+        } catch (err) {
+            console.warn('Erro ao buscar agendamentos:', err);
         }
 
-        horariosSimulados.forEach(item => {
-            const itemElemento = document.createElement('div');
-            itemElemento.classList.add('agendamento-item');
-            
-            if (item.vago) {
-                itemElemento.classList.add('vago');
-                itemElemento.innerHTML = `
-                    <span class="hora">${item.hora}</span>
-                    <span class="nome-pet">${item.pet}</span>
-                `;
-                
-                // Adiciona evento de clique para preencher o formulário
-                itemElemento.addEventListener('click', () => {
-                    preencherFormulario(data, item.hora);
+        // Horários simulados (cada 30 minutos das 09:00 às 17:30)
+        const horariosSimulados = [];
+        for (let h = 9; h <= 17; h++) {
+            horariosSimulados.push(`${String(h).padStart(2, '0')}:00`);
+            horariosSimulados.push(`${String(h).padStart(2, '0')}:30`);
+        }
+        horariosSimulados.push('18:00');
+
+        // Para cada horário simulado, cria um item na lista indicando se está livre ou ocupado
+        horariosSimulados.forEach(hora => {
+            const li = document.createElement('li');
+            const ocupado = horariosReais.some(a => a.dataHora.startsWith(`${dataISO}T${hora}`));
+            li.textContent = `${hora} ${ocupado ? '— OCUPADO' : '— disponível'}`;
+            li.className = ocupado ? 'horario-ocupado' : 'horario-livre';
+
+            if (!ocupado) {
+                // permite ao usuário clicar para preencher o formulário rapidamente
+                li.style.cursor = 'pointer';
+                li.addEventListener('click', () => {
+                    formInputData.value = dataISO;
+                    formInputHora.value = hora;
+                    // marca visualmente o horário selecionado
+                    Array.from(horariosLista.children).forEach(c => c.classList.remove('selecionado'));
+                    li.classList.add('selecionado');
                 });
-            } else {
-                itemElemento.innerHTML = `
-                    <span class="hora">${item.hora}</span>
-                    <span class="nome-pet">${item.pet}</span>
-                    <span class="servico">${item.servico}</span>
-                `;
             }
-            horariosLista.appendChild(itemElemento);
+
+            horariosLista.appendChild(li);
         });
     }
-    
-    // --- [ 4. FUNÇÃO: PREENCHER O FORMULÁRIO ] ---
-    function preencherFormulario(data, hora) {
-        // Formata a data para "YYYY-MM-DD" (que o input type="date" usa)
-        const dataISO = data.toISOString().split('T')[0];
-        
-        formInputData.value = dataISO;
-        formInputHora.value = hora;
-        
-        // Foca no primeiro campo do formulário
-        document.getElementById('nome-pet').focus();
-        
-        // Rola a página até o formulário
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    async function carregarPetsEServicos() {
+        try {
+            const [petsRes, servicosRes] = await Promise.all([
+                fetch('http://localhost:3000/pets'),
+                fetch('http://localhost:3000/servicos')
+            ]);
+
+            const pets = petsRes.ok ? await petsRes.json() : [];
+            const servicos = servicosRes.ok ? await servicosRes.json() : [];
+
+            const petSelect = document.getElementById('pet-select-agenda');
+            petSelect.innerHTML = '<option value="" disabled selected>Selecione um pet...</option>';
+            pets.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.nome} - (Dono: ${p.dono})`;
+                petSelect.appendChild(opt);
+            });
+
+            const servSelect = document.getElementById('servico');
+            // Limpa as opções (mantém a primeira instrução caso exista)
+            const first = servSelect.options[0] ? servSelect.options[0].outerHTML : '';
+            servSelect.innerHTML = first + servicos.map(s => `<option value="${s.nome}">${s.nome}</option>`).join('');
+        } catch (err) {
+            console.warn('Erro ao carregar pets/serviços:', err);
+        }
     }
+
+    carregarPetsEServicos();
 
     // --- [ 5. EVENTOS DOS BOTÕES E FORMULÁRIO ] ---
 
@@ -185,13 +203,85 @@ document.addEventListener('DOMContentLoaded', () => {
         const dadosDoForm = new FormData(form);
         const dados = Object.fromEntries(dadosDoForm.entries());
         
-        console.log("Dados prontos para enviar ao Back-end:", dados);
-        alert("Agendamento enviado com sucesso! (Simulação)");
-        
-        // Limpa o formulário (ou atualiza a lista de horários)
-        form.reset();
-        // Atualiza a lista de horários (simulação)
-        // (Aqui você chamaria a função para recarregar os horários do dia)
+        (async () => {
+            try {
+                // Validações rápidas
+                if (!dados.data || !dados.hora) {
+                    alert('Data ou hora inválida. Selecione um horário antes de confirmar.');
+                    return;
+                }
+
+                if (!dados.pet_id) {
+                    alert('Selecione um pet antes de confirmar.');
+                    return;
+                }
+
+                // buscamos ou criamos o serviço para obter um ID
+                const servName = dados.servico;
+                let servicos = [];
+                const servRes = await fetch('http://localhost:3000/servicos');
+                if (servRes.ok) servicos = await servRes.json();
+
+                let servicoObj = servicos.find(s => s.nome === servName);
+                if (!servicoObj) {
+                    // cria novo serviço com preço 0
+                    const createRes = await fetch('http://localhost:3000/servicos', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nome: servName, preco: 0 })
+                    });
+                    if (!createRes.ok) {
+                        const text = await createRes.text();
+                        throw new Error(`Falha ao criar serviço: ${createRes.status} ${text}`);
+                    }
+                    servicoObj = await createRes.json();
+                }
+
+                // monta dataHora no formato ISO
+                const dataHora = new Date(`${dados.data}T${dados.hora}`);
+                if (isNaN(dataHora.getTime())) {
+                    alert('Data/Hora inválida. Verifique os campos.');
+                    return;
+                }
+
+                const payload = {
+                    dataHora: dataHora.toISOString(),
+                    petId: parseInt(dados.pet_id),
+                    servicoId: parseInt(servicoObj.id)
+                };
+
+                console.debug('Agendamento payload:', payload);
+                const res = await fetch('http://localhost:3000/agendamentos', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                console.debug('Resposta do servidor (status):', res.status);
+
+                if (!res.ok) {
+                    // tenta ler corpo de erro
+                    let msg = '';
+                    try {
+                        const j = await res.json();
+                        msg = j.error || JSON.stringify(j);
+                    } catch (e) {
+                        msg = await res.text();
+                    }
+                    throw new Error(`Falha ao criar agendamento: ${res.status} ${msg}`);
+                }
+
+                const created = await res.json();
+                console.debug('Agendamento criado (body):', created);
+                alert('Agendamento criado com sucesso.');
+                form.reset();
+                // Re-renderiza o calendário e atualiza os horários para a data criada
+                renderizarCalendario();
+                try {
+                    if (dados.data) await atualizarHorarios(new Date(dados.data));
+                } catch (e) { console.warn('Não foi possível atualizar horários imediatamente:', e); }
+            } catch (err) {
+                console.error('Erro ao criar agendamento (detalhe):', err);
+                const msg = err && err.message ? err.message : String(err);
+                alert(`Erro ao criar agendamento: ${msg}`);
+            }
+        })();
     });
 
     // --- [ 6. INICIALIZAÇÃO ] ---
