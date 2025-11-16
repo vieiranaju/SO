@@ -182,45 +182,49 @@ function PaginaServicos() {
           {/* ===== [COLUNA 2: LISTA (Tabela)] ===== */}
           <div className="lista-coluna">
             {/* Usamos o layout de Tabela (de Vacinas) aqui */}
-            <div className="tabela-container">
-              <table className="tabela-vacinas">
-                <thead>
-                  <tr>
-                    <th>Nome do Serviço</th>
-                    <th>Preço (R$)</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading && (
-                    <tr><td colSpan="3">Carregando serviços...</td></tr>
-                  )}
-                  {!isLoading && servicos.length === 0 && (
-                    <tr><td colSpan="3">Nenhum serviço cadastrado.</td></tr>
-                  )}
-                  {!isLoading && servicos.map(servico => (
-                    <tr key={servico.id}>
-                      <td>{servico.nome}</td>
-                      <td>{servico.preco ? servico.preco.toFixed(2) : '0.00'}</td>
-                      <td>
-                        <button 
-                          className="botao-tabela"
-                          onClick={() => handleEditarClick(servico)}
-                          style={{ marginRight: '5px' }}
-                        >
-                          ✎
-                        </button>
-                        <button 
-                          className="botao-tabela botao-excluir" 
-                          onClick={() => handleDelete(servico.id)}
-                        >
-                          &times;
-                        </button>
-                      </td>
+            <div className="dash-card">
+              {/* Agora o h3 está DENTRO do cartão branco */}
+              <h3 style={{ marginBottom: '1rem' }}>Serviços Cadastrados</h3>
+              <div className="tabela-container">
+                <table className="tabela-vacinas">
+                  <thead>
+                    <tr>
+                      <th>Nome do Serviço</th>
+                      <th>Preço (R$)</th>
+                      <th>Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {isLoading && (
+                      <tr><td colSpan="3">Carregando serviços...</td></tr>
+                    )}
+                    {!isLoading && servicos.length === 0 && (
+                      <tr><td colSpan="3">Nenhum serviço cadastrado.</td></tr>
+                    )}
+                    {!isLoading && servicos.map(servico => (
+                      <tr key={servico.id}>
+                        <td>{servico.nome}</td>
+                        <td>{servico.preco ? servico.preco.toFixed(2) : '0.00'}</td>
+                        <td>
+                          <button 
+                            className="botao-tabela"
+                            onClick={() => handleEditarClick(servico)}
+                            style={{ marginRight: '5px' }}
+                          >
+                            ✎
+                          </button>
+                          <button 
+                            className="botao-tabela botao-excluir" 
+                            onClick={() => handleDelete(servico.id)}
+                          >
+                            &times;
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

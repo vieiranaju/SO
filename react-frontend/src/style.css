@@ -1035,14 +1035,21 @@ body {
     font-size: 0.85rem;
 }
 
-/* Ajustes responsivos para a pág. de clientes */
+.clientes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    align-items: flex-start;
+    gap: 1.5rem; /* <-- ADICIONE ISTO AQUI */
+}
+
 @media (max-width: 900px) {
     .clientes-grid {
         grid-template-columns: 1fr; /* Empilha as colunas */
+        /* O 'gap' já trata do espaçamento vertical aqui também */
     }
 
     .lista-coluna {
-        margin-top: 2rem;
+        margin-top: 0; /* <-- REMOVA O MARGIN-TOP */
     }
 }
 
