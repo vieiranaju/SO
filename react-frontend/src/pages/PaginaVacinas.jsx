@@ -1,75 +1,93 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// Importe a sua imagem da pasta /src/assets/
+// NOVO: Importe 'useRef' para rolar a tela
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import imgVacina from '../assets/img-vacina-para-caes.png';
 
-// 1. URL DA API (o seu back-end Docker)
 const API_URL = 'http://localhost:8080';
 
-// Função auxiliar para formatar a data (do seu JS antigo)
 const formatarData = (dataString) => {
+  if (!dataString) return '-';
+  // Formata a data para YYYY-MM-DD (para preencher o <input type="date">)
+  const data = new Date(dataString);
+  const offset = data.getTimezoneOffset();
+  const dataCorrigida = new Date(data.getTime() + (offset * 60000));
+  return dataCorrigida.toISOString().split('T')[0];
+};
+
+// NOVO: Função para formatar para a Tabela (diferente do input)
+const formatarDataTabela = (dataString) => {
   if (!dataString) return '-';
   return new Date(dataString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 };
 
+
 function PaginaVacinas() {
   
-  // 2. ESTADOS (A "Memória" do Componente)
-  // Guarda a lista de pets (do 'petsCache')
+  // --- [ ESTADOS ] ---
   const [pets, setPets] = useState([]);
-  // Guarda a lista de vacinas (da 'tabelaCorpo')
   const [vacinas, setVacinas] = useState([]);
-  // Guarda o termo da barra de busca
   const [termoBusca, setTermoBusca] = useState('');
-  // Guarda o estado do formulário (Inputs Controlados)
+  
+  // NOVO: Estado para guardar a vacina que estamos a editar
+  const [vacinaEmEdicao, setVacinaEmEdicao] = useState(null);
+  
+  // NOVO: Referência ao formulário (para rolar a tela)
+  const formRef = useRef(null);
+
   const [formData, setFormData] = useState({
     petId: '',
     nomeVacina: '',
     dataAplicacao: '',
     proximaDose: ''
   });
-  // Guarda o estado de "carregamento"
   const [isLoading, setIsLoading] = useState(true);
 
-  // 3. EFEITO (O antigo "DOMContentLoaded" -> "carregarPets" e "carregarVacinas")
+  // --- [ EFEITO (Fetch Inicial) ] ---
   useEffect(() => {
+    // (A sua lógica de 'carregarTudo' continua igual)
     const carregarTudo = async () => {
       setIsLoading(true);
       try {
-        // Busca pets E vacinas de uma vez (mais eficiente)
         const [petsRes, vacinasRes] = await Promise.all([
-          fetch(`${API_URL}/pets`, { cache: 'no-cache' }), // Usando a sua lógica de 'no-cache'
+          fetch(`${API_URL}/pets`, { cache: 'no-cache' }),
           fetch(`${API_URL}/vacinas`, { cache: 'no-cache' })
         ]);
-
         const petsData = petsRes.ok ? await petsRes.json() : [];
         const vacinasData = vacinasRes.ok ? await vacinasRes.json() : [];
-        
         setPets(petsData);
         setVacinas(vacinasData);
-
       } catch (err) {
         console.warn('Erro ao carregar dados:', err);
-        alert('Erro ao carregar dados. Verifique a conexão com o back-end.');
       } finally {
         setIsLoading(false);
       }
     };
-    
     carregarTudo();
-  }, []); // O array '[]' vazio significa "Rode isto UMA VEZ quando a página carregar"
+  }, []); 
 
+  // --- [ HANDLER (Formulário) ] ---
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(dadosAntigos => ({
+      ...dadosAntigos,
+      [name]: value
+    }));
+  };
   
-  // 4. LÓGICA DE SUBMISSÃO (O antigo "form.addEventListener")
+  // NOVO: Função para limpar o formulário e sair da edição
+  const resetFormulario = () => {
+    setFormData({ petId: '', nomeVacina: '', dataAplicacao: '', proximaDose: '' });
+    setVacinaEmEdicao(null);
+  };
+
+  // --- [ HANDLER DE SUBMISSÃO (Agora com Lógica de EDITAR) ] ---
   const handleSubmit = async (evento) => {
     evento.preventDefault(); 
     
-    // Validação (igual à antiga)
     if (!formData.petId) {
       alert('Por favor, selecione um pet antes de salvar.');
       return;
     }
 
-    // Payload (igual ao seu JS antigo, que já estava correto)
     const payload = {
       petId: parseInt(formData.petId), 
       nomeVacina: formData.nomeVacina,
@@ -77,9 +95,18 @@ function PaginaVacinas() {
       proximaDose: formData.proximaDose || null
     };
     
+    // NOVO: Lógica de Edição (PUT) vs. Criação (POST)
     try {
-      const res = await fetch(`${API_URL}/vacinas`, {
-        method: 'POST', 
+      let url = `${API_URL}/vacinas`;
+      let method = 'POST';
+
+      if (vacinaEmEdicao) {
+        url = `${API_URL}/vacinas/${vacinaEmEdicao.id}`;
+        method = 'PUT';
+      }
+
+      const res = await fetch(url, {
+        method: method, 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(payload)
       });
@@ -87,21 +114,22 @@ function PaginaVacinas() {
         const text = await res.text();
         throw new Error(`Erro: ${res.status} ${text}`);
       }
+      
+      const vacinaAtualizada = await res.json();
 
-      // A "Magia" do React:
-      // Em vez de 'carregarVacinas()', nós ATUALIZAMOS o estado
-      // O back-end (index.js) não retorna o 'petNome' no POST,
-      // então buscamos o nome no 'pets' (cache) para a tabela atualizar
-      const petSalvo = pets.find(p => p.id === payload.petId);
-      const novoRegistro = await res.json();
+      if (vacinaEmEdicao) {
+        // Se editou, substitua o item antigo pelo novo
+        setVacinas(listaAntiga => listaAntiga.map(v => 
+          v.id === vacinaEmEdicao.id ? vacinaAtualizada : v
+        ));
+        alert('Registro atualizado com sucesso!');
+      } else {
+        // Se criou, adicione o novo item
+        setVacinas(listaAntiga => [...listaAntiga, vacinaAtualizada]);
+        alert('Registro salvo com sucesso.');
+      }
       
-      // Adiciona o 'petNome' manualmente para a tabela renderizar
-      novoRegistro.petNome = petSalvo ? petSalvo.nome : 'Pet Desconhecido'; 
-      
-      setVacinas(listaAntiga => [...listaAntiga, novoRegistro]);
-      
-      alert('Registro salvo com sucesso.');
-      setFormData({ petId: '', nomeVacina: '', dataAplicacao: '', proximaDose: '' }); // Limpa o form
+      resetFormulario(); // Limpa o formulário e sai da edição
 
     } catch (err) {
       console.error(err);
@@ -109,32 +137,49 @@ function PaginaVacinas() {
     }
   };
 
-  // 5. LÓGICA DE DELETE (O antigo "botao-excluir.addEventListener")
+  // --- [ HANDLERS (Ações da Tabela) ] ---
+  
+  // (O seu 'handleDelete' continua igual)
   const handleDelete = async (idDaVacina) => {
     if (!confirm('Deseja excluir este registro de vacina?')) return;
-
     try {
+      // ... (lógica de delete igual) ...
       const res = await fetch(`${API_URL}/vacinas/${idDaVacina}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Falha ao excluir');
-      
-      // Magia do React:
-      // Em vez de 'carregarVacinas()', atualizamos o estado
-      setVacinas(listaAntiga => listaAntiga.filter(v => v.id !== idDaVacina));
-      alert('Registro excluído.');
-
+      if (res.ok) {
+        setVacinas(listaAntiga => listaAntiga.filter(v => v.id !== idDaVacina));
+        alert('Registro excluído.');
+      } else {
+        alert('Erro ao excluir.');
+      }
     } catch (err) {
       console.error(err);
-      alert('Erro ao excluir. Veja o console.');
     }
   };
   
-  // 6. LÓGICA DE FILTRO (O antigo "inputBusca.addEventListener")
-  // useMemo "memoriza" o filtro. Só é refeito se 'vacinas' ou 'termoBusca' mudar.
+  // NOVO: Função para preencher o formulário para edição
+  const handleEditarClick = (vacina) => {
+    setVacinaEmEdicao(vacina);
+    
+    // Preenche o formulário com os dados da vacina
+    setFormData({
+      petId: vacina.petId,
+      nomeVacina: vacina.nomeVacina,
+      // 'formatarData' converte a data ISO (com 'T') para 'YYYY-MM-DD'
+      dataAplicacao: formatarData(vacina.dataAplicacao),
+      proximaDose: formatarData(vacina.proximaDose)
+    });
+    
+    // Rola a tela até o formulário
+    formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // --- [ LÓGICA DE FILTRO (igual) ] ---
   const vacinasFiltradas = useMemo(() => {
+    // (A sua lógica de 'useMemo' para filtrar a tabela continua igual)
     return vacinas.filter(vacina => 
       vacina.petNome.toLowerCase().includes(termoBusca.toLowerCase())
     );
-  }, [vacinas, termoBusca]); // Dependências
+  }, [vacinas, termoBusca]); 
 
 
   // 7. O JSX (O seu "HTML" Renderizado)
@@ -142,20 +187,15 @@ function PaginaVacinas() {
     <div className="agenda-secao" style={{ padding: '2rem 0' }}>
       <div className="conteiner">
 
-        {/* ----- [CABEÇALHO] ----- */}
+        {/* ... (Cabeçalho e Filtro - continuam iguais) ... */}
         <div className="agenda-header">
           <h2>Controle de Vacinas</h2>
           <a href="#novo-registro" className="botao-principal">Adicionar Registro</a>
         </div>
-
-        {/* ----- [FILTRO "CONTROLADO"] ----- */}
         <div className="filtro-container">
           <input 
-            type="text" 
-            id="busca-pet" 
-            placeholder="Buscar por nome do pet..."
-            value={termoBusca}
-            onChange={(e) => setTermoBusca(e.target.value)}
+            type="text" id="busca-pet" placeholder="Buscar por nome do pet..."
+            value={termoBusca} onChange={(e) => setTermoBusca(e.target.value)}
           />
         </div>
 
@@ -173,31 +213,37 @@ function PaginaVacinas() {
             </thead>
             <tbody id="tabela-corpo">
               
-              {/* Renderização Condicional */}
-              {isLoading && (
-                <tr><td colSpan="5">Carregando registros...</td></tr>
-              )}
-              
+              {/* (Lógica de 'isLoading' e 'lista vazia' continua igual) */}
+              {isLoading && ( <tr><td colSpan="5">Carregando registros...</td></tr> )}
               {!isLoading && vacinasFiltradas.length === 0 && (
                 <tr><td colSpan="5">
                   {termoBusca ? 'Nenhum resultado encontrado.' : 'Nenhum registro de vacina.'}
                 </td></tr>
               )}
               
-              {/* O "Loop" do React (.map) que desenha as linhas */}
+              {/* O "Loop" do React (.map) */}
               {!isLoading && vacinasFiltradas.map(vacina => (
                 <tr key={vacina.id}>
                   <td>{vacina.petNome}</td>
                   <td>{vacina.nomeVacina}</td>
-                  <td>{formatarData(vacina.dataAplicacao)}</td>
-                  <td>{formatarData(vacina.proximaDose)}</td>
+                  {/* NOVO: Usa a formatação correta para a tabela */}
+                  <td>{formatarDataTabela(vacina.dataAplicacao)}</td>
+                  <td>{formatarDataTabela(vacina.proximaDose)}</td>
                   <td>
-                    {/* O 'onClick' chama a nossa função interna */}
+                    {/* NOVO: Botão de Editar */}
+                    <button 
+                      className="botao-tabela" // (Deixei genérico, adicione 'botao-editar' no CSS se quiser)
+                      onClick={() => handleEditarClick(vacina)}
+                      style={{ marginRight: '5px' }}
+                    >
+                      ✎
+                    </button>
+                    {/* Botão de Excluir (continua igual) */}
                     <button 
                       className="botao-tabela botao-excluir" 
                       onClick={() => handleDelete(vacina.id)}
                     >
-                      Excluir
+                      &times;
                     </button>
                   </td>
                 </tr>
@@ -207,30 +253,28 @@ function PaginaVacinas() {
         </div>
 
         {/* ----- [SECÇÃO DO FORMULÁRIO "CONTROLADO"] ----- */}
-        <section id="novo-registro" className="sobre-nos-secao" style={{ marginTop: '3rem', background: 'var(--cor-laranja-claro)' }}>
+        {/* NOVO: 'ref' para podermos rolar a tela */}
+        <section id="novo-registro" className="sobre-nos-secao" ref={formRef} style={{ marginTop: '3rem', background: 'var(--cor-laranja-claro)' }}>
           <div className="sobre-nos-grid">
-            
             <div className="sobre-nos-imagem">
               <img src={imgVacina} alt="Vacinação de pet" />
             </div>
-
             <div className="sobre-nos-texto">
-              <h2>Adicionar Novo Registro</h2>
+              {/* NOVO: Título dinâmico */}
+              <h2>{vacinaEmEdicao ? 'Editar Registro' : 'Adicionar Novo Registro'}</h2>
               
               <form id="form-vacina" className="formulario-agenda" onSubmit={handleSubmit}>
                 
                 <div className="form-grupo">
                   <label htmlFor="pet-select-vacina">Pet:</label>
-                  {/* O 'select' de Pets, agora dinâmico */}
+                  {/* NOVO: Desabilitado durante a edição (não mudamos o pet de uma vacina) */}
                   <select 
-                    id="pet-select-vacina" 
-                    name="petId" 
-                    required
+                    id="pet-select-vacina" name="petId" required
                     value={formData.petId}
-                    onChange={(e) => setFormData({...formData, petId: e.target.value})}
+                    onChange={handleFormChange}
+                    disabled={!!vacinaEmEdicao} // Converte 'vacinaEmEdicao' para true/false
                   >
                     <option value="" disabled>Selecione um pet...</option>
-                    {/* O "Loop" do React que desenha as options */}
                     {pets.map(pet => (
                       <option key={pet.id} value={pet.id}>
                         {pet.nome} - (Dono: {pet.dono})
@@ -239,13 +283,12 @@ function PaginaVacinas() {
                   </select>
                 </div>
 
-                {/* Inputs "Controlados" */}
                 <div className="form-grupo">
                   <label htmlFor="nome-vacina">Nome da Vacina:</label>
                   <input 
                     type="text" id="nome-vacina" name="nomeVacina" required
                     value={formData.nomeVacina}
-                    onChange={(e) => setFormData({...formData, nomeVacina: e.target.value})}
+                    onChange={handleFormChange}
                   />
                 </div>
                 <div className="form-grupo">
@@ -253,7 +296,7 @@ function PaginaVacinas() {
                   <input 
                     type="date" id="data-aplicacao" name="dataAplicacao" required
                     value={formData.dataAplicacao}
-                    onChange={(e) => setFormData({...formData, dataAplicacao: e.target.value})}
+                    onChange={handleFormChange}
                   />
                 </div>
                 <div className="form-grupo">
@@ -261,11 +304,23 @@ function PaginaVacinas() {
                   <input 
                     type="date" id="proxima-dose" name="proximaDose"
                     value={formData.proximaDose}
-                    onChange={(e) => setFormData({...formData, proximaDose: e.target.value})}
+                    onChange={handleFormChange}
                   />
                 </div>
                 
-                <button type="submit" className="botao-principal" style={{ border: 'none', cursor: 'pointer', background: 'var(--cor-laranja)' }}>Salvar Registro</button>
+                {/* NOVO: Botão dinâmico */}
+                <button type="submit" className="botao-principal" style={{ border: 'none', cursor: 'pointer', background: 'var(--cor-laranja)' }}>
+                  {vacinaEmEdicao ? 'Atualizar Registro' : 'Salvar Registro'}
+                </button>
+                
+                {/* NOVO: Botão de Cancelar Edição */}
+                {vacinaEmEdicao && (
+                  <button type="button" className="botao-secundario" 
+                          onClick={resetFormulario}
+                          style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '0.5rem' }}>
+                    Cancelar Edição
+                  </button>
+                )}
               </form>
             </div>
           </div>

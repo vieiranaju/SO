@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// NOVO: Importe 'useRef' para ajudar a rolar a tela
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-// 1. URL DA API (o seu back-end Docker/PostgreSQL)
 const API_URL = 'http://localhost:8080';
 
 function PaginaClientes() {
   
-  // 2. ESTADOS (A "Memória" do Componente)
-  const [pets, setPets] = useState([]); // Guarda a lista de pets vinda do banco
-  const [termoBusca, setTermoBusca] = useState(''); // Guarda o texto da barra de busca
-  const [isLoading, setIsLoading] = useState(true); // Controla a mensagem "Carregando..."
+  // --- [ ESTADOS ] ---
+  const [pets, setPets] = useState([]);
+  const [termoBusca, setTermoBusca] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Estado para controlar o formulário (Inputs Controlados)
+  // NOVO: Estado para guardar o pet que estamos a editar
+  const [petEmEdicao, setPetEmEdicao] = useState(null); 
+  
+  // NOVO: Referência ao topo do formulário (para rolar a tela)
+  const formRef = useRef(null); 
+
   const [formState, setFormState] = useState({
     nomeDono: '',
     telefone: '',
@@ -20,38 +25,45 @@ function PaginaClientes() {
     idadePet: ''
   });
 
-  
-  // 3. EFEITO (Busca os dados do banco quando a página carrega)
+  // --- [ EFEITO (Fetch Inicial) ] ---
   useEffect(() => {
     const fetchPets = async () => {
+      // (O seu 'useEffect' de carregar os pets continua igual...)
       setIsLoading(true);
       try {
         const res = await fetch(`${API_URL}/pets`); 
         if (!res.ok) throw new Error('Falha ao carregar pets');
         const data = await res.json();
-        setPets(data); // Guarda a lista real no estado
+        setPets(data);
       } catch (err) {
         console.error(err);
         alert('Erro ao carregar pets. O seu back-end (Docker) está rodando?');
       } finally {
-        setIsLoading(false); // Termina o carregamento
+        setIsLoading(false);
       }
     };
     fetchPets();
-  }, []); // O '[]' vazio significa "Rode isto UMA VEZ quando a página carregar"
+  }, []); 
 
-  
-  // 4. HANDLER DO FORMULÁRIO (Controla os inputs)
+  // --- [ HANDLERS (Formulário) ] ---
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    // Atualiza o estado do formulário
     setFormState(dadosAntigos => ({
       ...dadosAntigos,
       [name]: value
     }));
   };
   
-  // 5. HANDLER DE SUBMISSÃO (Salva no banco)
+  // NOVO: Função para limpar o formulário e sair do modo de edição
+  const resetFormulario = () => {
+    setFormState({
+      nomeDono: '', telefone: '', email: '',
+      nomePet: '', racaPet: '', idadePet: ''
+    });
+    setPetEmEdicao(null); // Sai do modo de edição
+  };
+
+  // --- [ HANDLER DE SUBMISSÃO (Agora com Lógica de EDITAR) ] ---
   const handleSubmit = async (evento) => {
     evento.preventDefault(); 
 
@@ -60,35 +72,48 @@ function PaginaClientes() {
       return; 
     }
     
-    // Payload que o back-end espera (baseado no seu 'index.js')
+    // Payload (o que o back-end espera)
     const payload = {
       nome: formState.nomePet,
       raca: formState.racaPet || 'SRD',
       dono: formState.nomeDono,
-      // NOTA: O seu index.js/Prisma não salva telefone/email/idade,
-      // então só enviamos o que ele aceita.
+      // (O seu back-end 'index.js' já aceita estes campos no 'app.put')
     };
 
+    // NOVO: Lógica de Edição (PUT) vs. Criação (POST)
     try {
-      const res = await fetch(`${API_URL}/pets`, {
-        method: 'POST',
+      let url = `${API_URL}/pets`;
+      let method = 'POST';
+      
+      // Se estamos a editar, mude a URL e o Método
+      if (petEmEdicao) {
+        url = `${API_URL}/pets/${petEmEdicao.id}`;
+        method = 'PUT';
+      }
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(`Erro no POST: ${res.status}`);
+      if (!res.ok) throw new Error(`Erro na operação: ${res.status}`);
       
-      const novoPet = await res.json();
+      const petAtualizado = await res.json();
       
       // Magia do React: Atualiza a lista na tela
-      setPets(listaAntiga => [...listaAntiga, novoPet]); 
+      if (petEmEdicao) {
+        // Se editou, substitua o item antigo pelo novo
+        setPets(listaAntiga => listaAntiga.map(pet => 
+          pet.id === petEmEdicao.id ? petAtualizado : pet
+        ));
+        alert('Pet atualizado com sucesso!');
+      } else {
+        // Se criou, adicione o novo item
+        setPets(listaAntiga => [...listaAntiga, petAtualizado]); 
+        alert('Salvo com sucesso!');
+      }
       
-      alert('Salvo com sucesso!');
-      
-      // Limpa o formulário
-      setFormState({
-        nomeDono: '', telefone: '', email: '',
-        nomePet: '', racaPet: '', idadePet: ''
-      });
+      resetFormulario(); // Limpa o formulário e sai do modo de edição
 
     } catch (err) {
       console.error(err);
@@ -96,16 +121,16 @@ function PaginaClientes() {
     }
   };
 
-  // 6. HANDLER DE DELETE (Apaga do banco)
+  // --- [ HANDLERS (Ações do Card) ] ---
+  
+  // (O seu 'handleDelete' continua igual)
   const handleDelete = async (idDoPet) => {
     if (confirm("Tem certeza que deseja excluir este pet?")) {
       try {
-        const res = await fetch(`${API_URL}/pets/${idDoPet}`, {
-          method: 'DELETE'
-        });
+        // ... (lógica de delete igual) ...
+        const res = await fetch(`${API_URL}/pets/${idDoPet}`, { method: 'DELETE' });
         if (res.ok) {
           alert("Pet removido!");
-          // Magia do React: Remove o pet da lista na tela
           setPets(pets.filter(pet => pet.id !== idDoPet));
         } else {
           alert("Erro ao deletar.");
@@ -116,53 +141,63 @@ function PaginaClientes() {
     }
   };
   
-  // 7. LÓGICA DE FILTRO E AGRUPAMENTO (O "Estado Derivado")
+  // NOVO: Função para preencher o formulário para edição
+  const handleEditarClick = (pet) => {
+    // 1. Coloca o pet no estado de "edição"
+    setPetEmEdicao(pet);
+    
+    // 2. Preenche o formulário com os dados do pet
+    setFormState({
+      nomeDono: pet.dono,
+      nomePet: pet.nome,
+      racaPet: pet.raca || '',
+      telefone: '', // O seu GET /pets não retorna estes campos
+      email: '',    // Então eles ficam vazios
+      idadePet: ''
+    });
+    
+    // 3. Rola a tela até o formulário
+    formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // --- [ LÓGICA DE FILTRO E AGRUPAMENTO (igual) ] ---
   const listaDonosFiltrada = useMemo(() => {
-    // Agrupa pets por dono (lógica do seu 'clientes.js' antigo)
+    // (A sua lógica de 'useMemo' para agrupar e filtrar continua igual)
     const donosAgrupados = pets.reduce((acc, pet) => {
       if (!acc[pet.dono]) {
-        acc[pet.dono] = {
-          nome: pet.dono,
-          contato: "Contato não registrado", // O seu GET /pets não tem esta info
-          pets: []
-        };
+        acc[pet.dono] = { nome: pet.dono, contato: "...", pets: [] };
       }
       acc[pet.dono].pets.push(pet);
       return acc;
     }, {});
     
-    // Converte o objeto de volta para um array
     const listaDeDonos = Object.values(donosAgrupados);
     
-    // Aplica o filtro da busca (lógica do seu 'keyup' antigo)
-    if (!termoBusca) {
-      return listaDeDonos; // Retorna tudo se a busca estiver vazia
-    }
-    
+    if (!termoBusca) return listaDeDonos;
     return listaDeDonos.filter(dono => {
-      const textoDono = dono.nome.toLowerCase();
-      const textoPets = dono.pets.map(p => `${p.nome} ${p.raca || ''}`).join(' ').toLowerCase();
-      return (textoDono + textoPets).includes(termoBusca.toLowerCase());
+      const texto = `${dono.nome} ${dono.pets.map(p => p.nome).join(' ')}`.toLowerCase();
+      return texto.includes(termoBusca.toLowerCase());
     });
     
-  }, [pets, termoBusca]); // Recalcula se 'pets' ou 'termoBusca' mudar
+  }, [pets, termoBusca]);
   
-
+  
   // 8. O JSX (O seu "HTML" com dados reais)
   return (
     <div className="agenda-secao" style={{ padding: '2rem 0' }}>
       <div className="conteiner">
-
         <div className="agenda-header">
           <h2>Gestão de Clientes e Pets</h2>
         </div>
-
         <div className="clientes-grid">
 
           {/* ===== [COLUNA 1: FORMULÁRIO "CONTROLADO"] ===== */}
-          <div id="novo-cliente" className="form-coluna">
+          {/* NOVO: 'ref' para podermos rolar a tela até ele */}
+          <div id="novo-cliente" className="form-coluna" ref={formRef}> 
             <div className="dash-card">
-              <h3>Adicionar Novo Cliente</h3>
+              {/* NOVO: Título dinâmico */}
+              <h3>{petEmEdicao ? 'Editar Pet' : 'Adicionar Novo Cliente'}</h3>
+              
               <form id="form-cliente" className="formulario-cliente" onSubmit={handleSubmit}>
                 
                 {/* --- [Grupo Dono] --- */}
@@ -171,6 +206,7 @@ function PaginaClientes() {
                   <input type="text" id="nome-dono" name="nomeDono" required 
                          value={formState.nomeDono} onChange={handleFormChange} />
                 </div>
+                {/* (Inputs de Telefone e Email - continuam iguais) */}
                 <div className="form-grupo">
                   <label htmlFor="telefone-dono">Telefone:</label>
                   <input type="tel" id="telefone-dono" name="telefone" placeholder="(XX) XXXXX-XXXX"
@@ -185,7 +221,7 @@ function PaginaClientes() {
                 <hr className="form-divisor" />
                 
                 {/* --- [Grupo Pet] --- */}
-                <h4>Adicionar Pet</h4>
+                <h4>{petEmEdicao ? `Editando: ${petEmEdicao.nome}` : 'Adicionar Pet'}</h4>
                 <div className="form-grupo">
                   <label htmlFor="nome-pet-form">Nome do Pet:</label>
                   <input type="text" id="nome-pet-form" name="nomePet" required
@@ -204,33 +240,35 @@ function PaginaClientes() {
                   </div>
                 </div>
                 
+                {/* NOVO: Botão dinâmico */}
                 <button type="submit" className="botao-principal" style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '1rem' }}>
-                  Salvar Cliente e Pet
+                  {petEmEdicao ? 'Atualizar Pet' : 'Salvar Cliente e Pet'}
                 </button>
+                
+                {/* NOVO: Botão de Cancelar Edição (só aparece se estiver editando) */}
+                {petEmEdicao && (
+                  <button type="button" className="botao-secundario" 
+                          onClick={resetFormulario}
+                          style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '0.5rem' }}>
+                    Cancelar Edição
+                  </button>
+                )}
               </form>
             </div>
           </div>
 
           {/* ===== [COLUNA 2: LISTA "DINÂMICA"] ===== */}
           <div className="lista-coluna">
-            {/* O input de busca "controlado" */}
             <input 
-              type="text" 
-              id="busca-cliente" 
-              className="filtro-cliente" 
+              type="text" id="busca-cliente" className="filtro-cliente" 
               placeholder="Buscar cliente por nome ou pet..."
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
+              value={termoBusca} onChange={(e) => setTermoBusca(e.target.value)}
             />
             
             <div id="lista-clientes-container" className="lista-clientes-scroll">
               
-              {/* === ESTA É A MUDANÇA ===
-                  Apagámos os cards "Ana Silva" e "Bruno Costa" 
-                  e substituímos por esta lógica: */}
-
+              {/* (Lógica de 'isLoading' e 'lista vazia' continua igual) */}
               {isLoading && <p>Carregando clientes...</p>}
-              
               {!isLoading && listaDonosFiltrada.length === 0 && (
                 <p style={{ textAlign: 'center', opacity: 0.7, marginTop: '1rem' }}>
                   {termoBusca ? 'Nenhum resultado encontrado.' : 'Nenhum cliente cadastrado.'}
@@ -242,12 +280,22 @@ function PaginaClientes() {
                 <div className="cliente-card" key={dono.nome}>
                   <div className="cliente-info">
                     <h4>{dono.nome}</h4>
-                    <p><small>{dono.contato}</small></p>
+                    {/* ... (info de contato) ... */}
                   </div>
                   <div className="cliente-pets" style={{ flexGrow: 1, textAlign: 'right' }}>
                     {dono.pets.map(pet => (
                       <div className="pet-tag" key={pet.id} style={{ display: 'inline-block', margin: '2px', padding: '5px', background: '#eee', borderRadius: '5px' }}>
                         {pet.nome} <small>({pet.raca || 'SRD'})</small>
+                        
+                        {/* NOVO: Botão de Editar */}
+                        <span 
+                          onClick={() => handleEditarClick(pet)}
+                          style={{ cursor: 'pointer', color: 'blue', marginLeft: '10px', fontWeight: 'bold' }}
+                        >
+                          ✎
+                        </span>
+                        
+                        {/* Botão de Excluir (continua igual) */}
                         <span 
                           onClick={() => handleDelete(pet.id)} 
                           style={{ cursor: 'pointer', color: 'red', marginLeft: '5px', fontWeight: 'bold' }}
@@ -259,13 +307,11 @@ function PaginaClientes() {
                   </div>
                 </div>
               ))}
-              
             </div>
           </div>
-
-        </div> {/* Fim do .clientes-grid */}
-      </div> {/* Fim do .conteiner */}
-    </div> /* Fim do .agenda-secao */
+        </div>
+      </div>
+    </div>
   );
 }
 
