@@ -14,8 +14,8 @@ model Pet {
   raca         String?
   dono         String
   idade        Int
-  agendamentos Agendamento[]
-  vacinas      Vacina[]
+  vacinas       Vacina[]       @relation(onDelete: Cascade)
+  agendamentos  Agendamento[]  @relation(onDelete: Cascade)
 }
 
 model Servico {

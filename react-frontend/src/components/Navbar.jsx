@@ -16,6 +16,7 @@ function Navbar() {
             <li><NavLink to="/agenda" className={getNavLinkClass}>Agenda</NavLink></li>
             <li><NavLink to="/vacinas" className={getNavLinkClass}>Vacinas</NavLink></li>
             <li><NavLink to="/clientes" className={getNavLinkClass}>Clientes</NavLink></li>
+            <li><NavLink to="/servicos" className={getNavLinkClass}>Serviços</NavLink></li>
           </ul>
         </nav>
       </div>

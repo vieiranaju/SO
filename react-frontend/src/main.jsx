@@ -11,6 +11,7 @@ import PaginaPainel from './pages/PaginaPainel.jsx';
 import PaginaAgenda from './pages/PaginaAgenda.jsx';
 import PaginaVacinas from './pages/PaginaVacinas.jsx';
 import PaginaClientes from './pages/PaginaClientes.jsx';
+import PaginaServicos from './pages/PaginaServicos.jsx';
 
 // Defina as rotas
 const router = createBrowserRouter([
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { path: "agenda", element: <PaginaAgenda /> },
       { path: "vacinas", element: <PaginaVacinas /> },
       { path: "clientes", element: <PaginaClientes /> },
+      { path: "servicos", element: <PaginaServicos /> },
     ],
   },
 ]);
