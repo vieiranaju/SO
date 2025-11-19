@@ -77,8 +77,12 @@ function PaginaClientes() {
       nome: formState.nomePet,
       raca: formState.racaPet || 'SRD',
       dono: formState.nomeDono,
+      idade: Number(formState.idadePet) || 0 
       // (O seu back-end 'index.js' já aceita estes campos no 'app.put')
     };
+
+    console.log("Payload enviado:", payload);
+
 
     // NOVO: Lógica de Edição (PUT) vs. Criação (POST)
     try {

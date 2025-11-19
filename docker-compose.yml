@@ -35,6 +35,14 @@ services:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:
       - db-postgres
+    
+  frontend:
+    build: ./react-frontend
+    container_name: meu_frontend_react
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres-data:
