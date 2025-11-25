@@ -3,8 +3,8 @@ const prisma = new PrismaClient();
 
 // GET ALL (Já estava correto)
 exports.getAll = async (req, res) => {
-  const pets = await prisma.pet.findMany({ 
-    include: { vacinas: true, agendamentos: true } 
+  const pets = await prisma.pet.findMany({
+    include: { vacinas: true, agendamentos: true }
   });
   res.json(pets);
 };
@@ -26,7 +26,22 @@ exports.getById = async (req, res) => {
 // CREATE (Corrigido: Adiciona 'include' e 'try...catch')
 exports.create = async (req, res) => {
   try {
-    const pet = await prisma.pet.create({ 
+    // Validação: Verifica se já existe um pet com o mesmo nome (case-insensitive) para o mesmo dono
+    const existingPets = await prisma.pet.findMany({
+      where: { dono: req.body.dono }
+    });
+
+    const isDuplicate = existingPets.some(pet =>
+      pet.nome.toLowerCase() === req.body.nome.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      return res.status(400).json({
+        error: 'Já existe um pet com este nome para este dono'
+      });
+    }
+
+    const pet = await prisma.pet.create({
       data: req.body,
       include: { vacinas: true, agendamentos: true } // Devolve o objeto completo
     });
@@ -39,8 +54,24 @@ exports.create = async (req, res) => {
 // UPDATE (Corrigido: Adiciona 'include' e 'try...catch')
 exports.update = async (req, res) => {
   try {
+    // Validação: Verifica se já existe outro pet com o mesmo nome (case-insensitive) para o mesmo dono
+    const existingPets = await prisma.pet.findMany({
+      where: { dono: req.body.dono }
+    });
+
+    const petId = Number(req.params.id);
+    const isDuplicate = existingPets.some(pet =>
+      pet.id !== petId && pet.nome.toLowerCase() === req.body.nome.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      return res.status(400).json({
+        error: 'Já existe um pet com este nome para este dono'
+      });
+    }
+
     const pet = await prisma.pet.update({
-      where: { id: Number(req.params.id) },
+      where: { id: petId },
       data: req.body,
       include: { vacinas: true, agendamentos: true } // Devolve o objeto completo
     });

@@ -4,13 +4,14 @@
   "description": "Backend Express + Prisma + PostgreSQL",
   "main": "src/server.js",
   "scripts": {
-    "start": "npx prisma migrate deploy && node src/server.js",
+    "start": "npx prisma db push && node src/server.js",
     "dev": "nodemon src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "cors": "^2.8.5",
     "express": "^4.18.2"
   },
   "devDependencies": {

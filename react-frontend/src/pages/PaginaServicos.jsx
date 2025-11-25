@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = 'http://localhost:8080';
 
 function PaginaServicos() {
 
