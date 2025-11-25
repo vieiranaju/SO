@@ -3,6 +3,15 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 const API_URL = 'http://localhost:8080';
 
+// Função para transformar "ana silva" em "Ana Silva"
+const capitalizarNome = (nome) => {
+  return nome
+    .toLowerCase()
+    .split(' ')
+    .map(palavra => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+    .join(' ');
+};
+
 function PaginaClientes() {
   
   // --- [ ESTADOS ] ---
@@ -64,20 +73,38 @@ function PaginaClientes() {
   };
 
   // --- [ HANDLER DE SUBMISSÃO (Agora com Lógica de EDITAR) ] ---
+  // ... dentro de PaginaClientes.jsx ...
+
   const handleSubmit = async (evento) => {
     evento.preventDefault(); 
 
-    if (formState.nomeDono.length < 3) {
+    // 1. NORMALIZAÇÃO: "ana" vira "Ana", "tOzÓ" vira "Tozó"
+    const nomeDonoFormatado = capitalizarNome(formState.nomeDono.trim());
+    const nomePetFormatado = capitalizarNome(formState.nomePet.trim());
+
+    if (nomeDonoFormatado.length < 3) {
       alert("O nome do dono deve ter pelo menos 3 letras!");
       return; 
     }
     
-    // Payload (o que o back-end espera)
+    // 2. VALIDAÇÃO DE DUPLICADOS (Lógica no Front-end)
+    // Procuramos se JÁ EXISTE um pet com este nome para este dono
+    // (Ignoramos se estivermos a editar o PRÓPRIO pet)
+    const duplicado = pets.find(pet => 
+      pet.dono.toLowerCase() === nomeDonoFormatado.toLowerCase() && 
+      pet.nome.toLowerCase() === nomePetFormatado.toLowerCase() &&
+      (!petEmEdicao || pet.id !== petEmEdicao.id) // Ignora se for o mesmo ID (edição)
+    );
+
+    if (duplicado) {
+      alert(`Erro: O dono(a) "${nomeDonoFormatado}" já tem um pet chamado "${nomePetFormatado}" cadastrado!`);
+      return; // Para tudo, não salva.
+    }
+
     const payload = {
-      nome: formState.nomePet,
+      nome: nomePetFormatado, // Enviamos o nome bonitinho
       raca: formState.racaPet || 'SRD',
-      dono: formState.nomeDono,
-      // (O seu back-end 'index.js' já aceita estes campos no 'app.put')
+      dono: nomeDonoFormatado, // Enviamos o dono bonitinho
     };
 
     // NOVO: Lógica de Edição (PUT) vs. Criação (POST)

@@ -416,44 +416,60 @@ body {
     font-size: 0.9rem;
 }
 
+/* ===== ESTILOS DO CALENDÁRIO (Corrigido e Unificado) ===== */
+
 .dia-calendario {
-    text-align: center;
-    padding: 0.75rem 0.5rem;
+    /* Tamanho e Layout */
+    width: 100%; /* Ocupa toda a largura da coluna do grid */
+    aspect-ratio: 1 / 1; /* Mantém o formato QUADRADO perfeito */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Estética */
+    font-size: 1rem;
     border-radius: 8px;
     cursor: pointer;
+    border: 2px solid transparent; /* Borda invisível para não pular layout */
     transition: all 0.2s ease;
 }
 
-.dia-calendario:hover {
-    background: #f0f0f0;
+/* Hover (passar o rato) - Só se não for passado nem selecionado */
+.dia-calendario:hover:not(.passado):not(.selecionado) {
+    background-color: #e0e7ff; /* Azul bem clarinho */
 }
 
-.dia-calendario.outro-mes {
-    color: #ccc;
-}
+/* --- ESTADOS --- */
 
+/* 1. HOJE (Apenas Borda) */
 .dia-calendario.hoje {
-    background: var(--cor-primaria);
-    color: var(--cor-branca);
+    border: 2px solid var(--cor-primaria);
+    color: var(--cor-primaria);
     font-weight: 700;
+    background-color: transparent;
 }
 
-.dia-calendario.com-evento {
+/* 2. SELECIONADO (Fundo Sólido - Ganha do Hoje) */
+.dia-calendario.selecionado {
+    background-color: var(--cor-primaria) !important;
+    color: white !important;
+    border-color: var(--cor-primaria) !important;
     font-weight: 700;
-    position: relative;
+    transform: scale(1.05); /* Leve aumento */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
 }
 
-/* Bolinha de evento */
-.dia-calendario.com-evento::after {
-    content: '';
-    position: absolute;
-    bottom: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--cor-laranja);
+/* 3. PASSADO (Bloqueado) */
+.dia-calendario.passado {
+    background-color: #f3f4f6;
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+/* 4. OUTRO MÊS (Cinza) */
+.dia-calendario.outro-mes {
+    color: #d1d5db;
+    cursor: default;
 }
 
 /* Estilos da Lista de Agendamentos */

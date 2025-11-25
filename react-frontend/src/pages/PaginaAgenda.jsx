@@ -17,11 +17,23 @@ horariosSimulados.push('18:00');
 function PaginaAgenda() {
   
   // --- [ ESTADOS ] ---
+  // --- [ 2. ESTADOS ] ---
+  
+  // FUNÇÃO AUXILIAR: Pega a data de hoje ZERADA (00:00:00)
+  // Isso evita bugs de comparação
+  const getHojeZerado = () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return hoje;
+  };
+
   const [dataAtual, setDataAtual] = useState(new Date()); 
   const [petsCache, setPetsCache] = useState([]);
   const [servicosCache, setServicosCache] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
-  const [diaSelecionado, setDiaSelecionado] = useState(new Date());
+  
+  // CORREÇÃO: Inicializa com a data zerada
+  const [diaSelecionado, setDiaSelecionado] = useState(getHojeZerado());
   
   // NOVO: Estado para guardar o agendamento em edição
   const [agendamentoEmEdicao, setAgendamentoEmEdicao] = useState(null);
@@ -70,26 +82,59 @@ function PaginaAgenda() {
   }, [agendamentos, diaSelecionado]); 
 
   // (A sua lógica 'gerarDiasDoCalendario' continua igual)
+  // ... dentro de PaginaAgenda.jsx ...
+
+  // (Dentro de PaginaAgenda.jsx)
+
   const gerarDiasDoCalendario = () => {
-    // ... (função idêntica à anterior) ...
     const mes = dataAtual.getMonth();
     const ano = dataAtual.getFullYear();
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    
+    // Data de hoje (zerada para comparação)
+    const hoje = getHojeZerado();
+
     const primeiroDiaDoMes = new Date(ano, mes, 1).getDay();
     const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate();
     const ultimoDiaMesAnterior = new Date(ano, mes, 0).getDate();
+    
     const dias = [];
+
+    // Dias do mês anterior
     for (let i = primeiroDiaDoMes; i > 0; i--) {
       dias.push(<div className="dia-calendario outro-mes" key={`prev-${i}`}>{ultimoDiaMesAnterior - i + 1}</div>);
     }
+
+    // Dias do mês atual
     for (let i = 1; i <= ultimoDiaDoMes; i++) {
       const dataCompleta = new Date(ano, mes, i);
+      // Zera a hora para garantir que a comparação funcione
+      dataCompleta.setHours(0, 0, 0, 0);
+
       let classes = 'dia-calendario';
-      if (dataCompleta.getTime() === hoje.getTime()) classes += ' hoje';
-      if (diaSelecionado && dataCompleta.getTime() === diaSelecionado.getTime()) classes += ' selecionado';
+      
+      // 1. Verifica se é PASSADO (bloqueia)
+      if (dataCompleta < hoje) {
+        classes += ' passado';
+      } else {
+        // 2. Verifica se é HOJE (adiciona classe, mas não seleciona ainda)
+        if (dataCompleta.getTime() === hoje.getTime()) {
+            classes += ' hoje';
+        }
+        
+        // 3. Verifica se é o dia SELECIONADO (pelo clique)
+        if (diaSelecionado && dataCompleta.getTime() === diaSelecionado.getTime()) {
+           classes += ' selecionado';
+        }
+      }
+
       dias.push(
-        <div className={classes} key={`curr-${i}`} onClick={() => handleDiaClick(dataCompleta)}>
+        <div className={classes} key={`curr-${i}`} onClick={() => {
+            if (dataCompleta >= hoje) {
+                setDiaSelecionado(dataCompleta);
+                // (Opcional: Limpa o formulário ao mudar de dia)
+                setFormData(prev => ({ ...prev, data: dataCompleta.toISOString().split('T')[0], hora: '' }));
+            }
+        }}>
           {i}
         </div>
       );
