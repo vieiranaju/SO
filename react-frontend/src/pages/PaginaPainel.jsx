@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react'; 
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import dogosBackground from '../assets/dogos.jpg'; 
+import dogosBackground from '../assets/dogos.jpg';
 
-// 2. URL DA API
 const API_URL = 'http://localhost:8080';
 
-// Função auxiliar para formatar a data (para "Próximos Horários")
+// Auxiliar: Formatar hora
 const formatarHora = (dataString) => {
   return new Date(dataString).toLocaleTimeString('pt-BR', {
     hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
@@ -14,19 +13,17 @@ const formatarHora = (dataString) => {
 
 function PaginaPainel() {
 
-  // 3. ESTADOS (A "Memória" da Página)
+  // Estados
   const [pets, setPets] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [vacinas, setVacinas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 4. EFEITO (O "Fetch" de Dados)
-  // Roda uma vez quando a página carrega
+  // Efeito: Carregar dados
   useEffect(() => {
     const carregarTudo = async () => {
       setIsLoading(true);
       try {
-        // Busca todos os dados de uma vez
         const [petsRes, agendamentosRes, vacinasRes] = await Promise.all([
           fetch(`${API_URL}/pets`),
           fetch(`${API_URL}/agendamentos`),
@@ -49,43 +46,38 @@ function PaginaPainel() {
       }
     };
     carregarTudo();
-  }, []); // [] = Roda 1 vez
+  }, []);
 
-  // 5. CÁLCULOS (O "Cérebro" do Dashboard)
-  // 'useMemo' recalcula os resumos (de forma eficiente) sempre que os dados mudam.
+  // Cálculos do Dashboard
   const estatisticas = useMemo(() => {
-    // --- Data de "Hoje" (em UTC para comparar com o banco) ---
     const hoje = new Date();
-    hoje.setUTCHours(0, 0, 0, 0); // Zera a hora para UTC
+    hoje.setUTCHours(0, 0, 0, 0);
     const hojeISO = hoje.toISOString().split('T')[0];
-    
-    // Data de "Daqui a 7 dias"
+
     const semanaQueVem = new Date(hoje);
     semanaQueVem.setUTCDate(hoje.getUTCDate() + 7);
 
-    // --- Card 1: Agendamentos de Hoje ---
-    const agendamentosDeHoje = agendamentos.filter(a => 
+    // Card: Agendamentos
+    const agendamentosDeHoje = agendamentos.filter(a =>
       a.dataHora.startsWith(hojeISO)
     );
 
-    // --- Card 2: Vacinas a Vencer ---
+    // Card: Vacinas
     const vacinasAVencer = vacinas.filter(v => {
       if (!v.proximaDose) return false;
       const dataDose = new Date(v.proximaDose);
       return dataDose >= hoje && dataDose <= semanaQueVem;
     });
-    
-    // --- Card 3: Total de Clientes ---
-    // (Usa a mesma lógica do seu 'clientes.js' para agrupar)
+
+    // Card: Clientes
     const donos = new Set(pets.map(p => p.dono));
     const totalClientes = donos.size;
     const totalPets = pets.length;
 
-    // --- Card 4: Próximos Horários ---
-    // Pega os de hoje, ordena e pega os 3 primeiros
+    // Card: Próximos Horários
     const proximosHorarios = [...agendamentosDeHoje]
       .sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora))
-      .slice(0, 3); // Pega só os 3 primeiros
+      .slice(0, 3);
 
     return {
       agendamentosDeHoje,
@@ -94,10 +86,9 @@ function PaginaPainel() {
       totalPets,
       proximosHorarios
     };
-  }, [pets, agendamentos, vacinas]); // Recalcula se estas listas mudarem
+  }, [pets, agendamentos, vacinas]);
 
-  
-  // Objeto de estilo para o Hero (igual ao que já tínhamos)
+
   const heroStyle = {
     background: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${dogosBackground}) center/cover no-repeat`,
     height: '70vh',
@@ -109,7 +100,6 @@ function PaginaPainel() {
     padding: '0 1rem',
   };
 
-  // 6. O JSX (O seu "HTML" com dados reais)
   return (
     <>
       <main className="hero" style={heroStyle}>
@@ -125,18 +115,15 @@ function PaginaPainel() {
       <section className="dashboard-secao">
         <div className="conteiner">
           <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '2rem' }}>Resumo do Dia</h2>
-          
-          {/* Mostra "Carregando..." enquanto os dados não chegam */}
+
           {isLoading ? (
             <p style={{ textAlign: 'center' }}>Carregando estatísticas...</p>
           ) : (
-            
-            /* Quando os dados chegam, mostra o grid */
+
             <div className="dashboard-grid">
 
               <div className="dash-card">
                 <h3>Agendamentos de Hoje</h3>
-                {/* DADO REAL */}
                 <div className="dash-numero">{estatisticas.agendamentosDeHoje.length}</div>
                 <p>Agendamentos para hoje</p>
                 <Link to="/agenda" className="botao-card" style={{ background: 'var(--cor-primaria)', color: 'var(--cor-branca)', border: 'none' }}>
@@ -146,7 +133,6 @@ function PaginaPainel() {
 
               <div className="dash-card">
                 <h3>Vacinas a Vencer</h3>
-                {/* DADO REAL */}
                 <div className="dash-numero">{estatisticas.vacinasAVencer.length}</div>
                 <p>Próximos 7 dias</p>
                 <Link to="/vacinas" className="botao-card" style={{ background: 'var(--cor-primaria)', color: 'var(--cor-branca)', border: 'none' }}>
@@ -156,9 +142,7 @@ function PaginaPainel() {
 
               <div className="dash-card">
                 <h3>Total de Clientes</h3>
-                {/* DADO REAL */}
                 <div className="dash-numero">{estatisticas.totalClientes}</div>
-                {/* DADO REAL */}
                 <p>{estatisticas.totalClientes} clientes e {estatisticas.totalPets} pets cadastrados.</p>
                 <Link to="/clientes" className="botao-card" style={{ background: 'var(--cor-primaria)', color: 'var(--cor-branca)', border: 'none' }}>
                   Gerenciar Clientes
@@ -168,20 +152,18 @@ function PaginaPainel() {
               <div className="dash-card dash-card-grande">
                 <h3>Próximos Horários</h3>
                 <div className="dash-lista-resumo">
-                  
-                  {/* DADO REAL (Loop) */}
+
                   {estatisticas.proximosHorarios.length === 0 && (
                     <p style={{ opacity: 0.7, padding: '1rem' }}>Nenhum agendamento hoje.</p>
                   )}
-                  
+
                   {estatisticas.proximosHorarios.map(agendamento => {
-                    // Tenta encontrar o nome do Pet no "cache" (estado)
                     const pet = pets.find(p => p.id === agendamento.petId);
                     return (
                       <div className="agendamento-item" key={agendamento.id}>
                         <span className="hora">{formatarHora(agendamento.dataHora)}</span>
                         <span className="nome-pet">{pet ? pet.nome : 'Carregando...'}</span>
-                        <span className="servico">{agendamento.servico.nome}</span> {/* O GET /agendamentos já inclui o serviço */}
+                        <span className="servico">{agendamento.servico.nome}</span>
                       </div>
                     );
                   })}

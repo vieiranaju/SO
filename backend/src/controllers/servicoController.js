@@ -1,15 +1,15 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET ALL 
+// Listar todos os serviços
 exports.getAll = async (req, res) => {
-  const servicos = await prisma.servico.findMany({ 
-    include: { agendamentos: true } 
+  const servicos = await prisma.servico.findMany({
+    include: { agendamentos: true }
   });
   res.json(servicos);
 };
 
-// GET BY ID 
+// Buscar serviço por ID
 exports.getById = async (req, res) => {
   try {
     const servico = await prisma.servico.findUnique({
@@ -23,26 +23,26 @@ exports.getById = async (req, res) => {
   }
 };
 
-// CREATE (Corrigido: Converte 'preco' e adiciona try...catch)
+// Criar novo serviço
 exports.create = async (req, res) => {
   try {
     const { nome, preco } = req.body;
-    
-    const servico = await prisma.servico.create({ 
+
+    const servico = await prisma.servico.create({
       data: {
         nome: nome,
-        preco: preco ? parseFloat(preco) : 0 // Converte para Float
+        preco: preco ? parseFloat(preco) : 0
       },
-      include: { agendamentos: true } // Mantém a consistência da resposta
+      include: { agendamentos: true }
     });
     res.status(201).json(servico);
-    
+
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// UPDATE (Corrigido: Converte 'preco' e adiciona try...catch)
+// Atualizar serviço
 exports.update = async (req, res) => {
   try {
     const { nome, preco } = req.body;
@@ -51,18 +51,18 @@ exports.update = async (req, res) => {
       where: { id: Number(req.params.id) },
       data: {
         nome: nome,
-        preco: preco ? parseFloat(preco) : undefined // Converte para Float
+        preco: preco ? parseFloat(preco) : undefined
       },
-      include: { agendamentos: true } // Mantém a consistência da resposta
+      include: { agendamentos: true }
     });
     res.json(servico);
-    
+
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// REMOVE (Corrigido: Adiciona try...catch para o "bug" do delete)
+// Remover serviço
 exports.remove = async (req, res) => {
   try {
     await prisma.servico.delete({ where: { id: Number(req.params.id) } });

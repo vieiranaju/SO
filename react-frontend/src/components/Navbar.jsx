@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 
 function Navbar() {
   const getNavLinkClass = ({ isActive }) => {
-    return isActive ? 'ativo' : ''; // Usa a sua classe CSS .ativo
+    return isActive ? 'ativo' : '';
   };
 
   return (

@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET ALL
+// Listar todos os pets
 exports.getAll = async (req, res) => {
   const pets = await prisma.pet.findMany({
     include: { vacinas: true, agendamentos: true }
@@ -9,7 +9,7 @@ exports.getAll = async (req, res) => {
   res.json(pets);
 };
 
-// GET BY ID
+// Buscar pet por ID
 exports.getById = async (req, res) => {
   try {
     const pet = await prisma.pet.findUnique({
@@ -23,11 +23,11 @@ exports.getById = async (req, res) => {
   }
 };
 
-// CREATE
+// Criar novo pet
 exports.create = async (req, res) => {
   console.log('Recebendo requisição de pet:', req.body);
   try {
-    // Validação: Verifica se já existe um pet com o mesmo nome (case-insensitive) para o mesmo dono
+    // Validação: Verifica duplicidade de nome para o mesmo dono
     const existingPets = await prisma.pet.findMany({
       where: { dono: req.body.dono }
     });
@@ -45,7 +45,7 @@ exports.create = async (req, res) => {
 
     const pet = await prisma.pet.create({
       data: req.body,
-      include: { vacinas: true, agendamentos: true } // Devolve o objeto completo
+      include: { vacinas: true, agendamentos: true }
     });
     console.log('Pet criado com sucesso:', pet);
     res.status(201).json(pet);
@@ -55,10 +55,10 @@ exports.create = async (req, res) => {
   }
 };
 
-// UPDATE
+// Atualizar pet
 exports.update = async (req, res) => {
   try {
-    // Validação: Verifica se já existe outro pet com o mesmo nome (case-insensitive) para o mesmo dono
+    // Validação: Verifica duplicidade de nome para o mesmo dono (exceto o próprio)
     const existingPets = await prisma.pet.findMany({
       where: { dono: req.body.dono }
     });
@@ -77,7 +77,7 @@ exports.update = async (req, res) => {
     const pet = await prisma.pet.update({
       where: { id: petId },
       data: req.body,
-      include: { vacinas: true, agendamentos: true } // Devolve o objeto completo
+      include: { vacinas: true, agendamentos: true }
     });
     res.json(pet);
   } catch (error) {
@@ -85,13 +85,12 @@ exports.update = async (req, res) => {
   }
 };
 
-// REMOVE
+// Remover pet
 exports.remove = async (req, res) => {
   try {
     await prisma.pet.delete({ where: { id: Number(req.params.id) } });
     res.status(204).end();
   } catch (error) {
-    // Este erro agora inclui o "Bug do Delete"
     res.status(404).json({ error: 'Pet não encontrado ou possui registros associados (vacinas/agendamentos).' });
   }
 };

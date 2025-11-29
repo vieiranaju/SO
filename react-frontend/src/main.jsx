@@ -2,10 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-// Importe o seu CSS global
-import './style.css'; 
+// Estilos Globais
+import './style.css';
 
-// Importe o Layout e as Páginas
+// Layout e Páginas
 import App from './App.jsx';
 import PaginaPainel from './pages/PaginaPainel.jsx';
 import PaginaAgenda from './pages/PaginaAgenda.jsx';
@@ -13,11 +13,11 @@ import PaginaVacinas from './pages/PaginaVacinas.jsx';
 import PaginaClientes from './pages/PaginaClientes.jsx';
 import PaginaServicos from './pages/PaginaServicos.jsx';
 
-// Defina as rotas
+// Configuração de Rotas
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // O "Layout" (com Navbar)
+    element: <App />, // Layout Principal
     children: [
       { path: "/", element: <PaginaPainel /> },
       { path: "agenda", element: <PaginaAgenda /> },
@@ -28,7 +28,7 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Ligue o React
+// Renderização
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <RouterProvider router={router} />

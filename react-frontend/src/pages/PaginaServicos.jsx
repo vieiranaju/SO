@@ -4,19 +4,18 @@ const API_URL = 'http://localhost:8080';
 
 function PaginaServicos() {
 
-  // --- [ ESTADOS ] ---
+  // Estados
   const [servicos, setServicos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [servicoEmEdicao, setServicoEmEdicao] = useState(null);
   const formRef = useRef(null);
 
-  // Estado do formulário
   const [formState, setFormState] = useState({
     nome: '',
-    preco: '' 
+    preco: ''
   });
 
-  // --- [ EFEITO (Fetch Inicial) ] ---
+  // Efeito: Carregar serviços
   useEffect(() => {
     const fetchServicos = async () => {
       setIsLoading(true);
@@ -33,9 +32,9 @@ function PaginaServicos() {
       }
     };
     fetchServicos();
-  }, []); // Roda 1 vez
+  }, []);
 
-  // --- [ HANDLERS (Formulário) ] ---
+  // Handlers: Formulário
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormState(dadosAntigos => ({
@@ -49,7 +48,7 @@ function PaginaServicos() {
     setServicoEmEdicao(null);
   };
 
-  // --- [ SUBMIT (POST / PUT) ] ---
+  // Handler: Submissão (Criar ou Editar)
   const handleSubmit = async (evento) => {
     evento.preventDefault();
 
@@ -58,10 +57,9 @@ function PaginaServicos() {
       return;
     }
 
-    // O payload (já com o 'preco' que o back-end espera)
     const payload = {
       nome: formState.nome,
-      preco: parseFloat(formState.preco) || 0 // Converte para número
+      preco: parseFloat(formState.preco) || 0
     };
 
     try {
@@ -80,7 +78,7 @@ function PaginaServicos() {
       });
 
       if (!res.ok) throw new Error(`Erro na operação: ${res.status}`);
-      
+
       const servicoAtualizado = await res.json();
 
       if (servicoEmEdicao) {
@@ -101,19 +99,18 @@ function PaginaServicos() {
     }
   };
 
-  // --- [ AÇÕES (Delete / Edit) ] ---
+  // Handlers: Ações
   const handleDelete = async (idDoServico) => {
     if (confirm("Atenção! Excluir um serviço pode afetar agendamentos existentes. Deseja continuar?")) {
       try {
         const res = await fetch(`${API_URL}/servicos/${idDoServico}`, { method: 'DELETE' });
-        
-        // O seu back-end (corrigido) retorna 400 se o serviço estiver em uso
+
         if (res.status === 400) {
-            const err = await res.json();
-            throw new Error(err.error);
+          const err = await res.json();
+          throw new Error(err.error);
         }
         if (!res.ok && res.status !== 204) throw new Error('Falha ao excluir');
-        
+
         setServicos(listaAntiga => listaAntiga.filter(s => s.id !== idDoServico));
         alert('Serviço removido.');
 
@@ -141,37 +138,36 @@ function PaginaServicos() {
           <h2>Gestão de Serviços</h2>
         </div>
 
-        {/* Usamos o layout de Clientes (2 colunas) */}
         <div className="clientes-grid">
 
-          {/* ===== [COLUNA 1: FORMULÁRIO] ===== */}
+          {/* Coluna 1: Formulário */}
           <div id="novo-servico" className="form-coluna" ref={formRef}>
             <div className="dash-card">
               <h3>{servicoEmEdicao ? 'Editar Serviço' : 'Adicionar Novo Serviço'}</h3>
-              
+
               <form id="form-servico" className="formulario-cliente" onSubmit={handleSubmit}>
-                
+
                 <div className="form-grupo">
                   <label htmlFor="nome">Nome do Serviço:</label>
                   <input type="text" id="nome" name="nome" required
-                         value={formState.nome} onChange={handleFormChange} />
+                    value={formState.nome} onChange={handleFormChange} />
                 </div>
-                
+
                 <div className="form-grupo">
                   <label htmlFor="preco">Preço (R$):</label>
                   <input type="number" id="preco" name="preco" min="0" step="0.01"
-                         placeholder="Ex: 50.00"
-                         value={formState.preco} onChange={handleFormChange} />
+                    placeholder="Ex: 50.00"
+                    value={formState.preco} onChange={handleFormChange} />
                 </div>
-                
+
                 <button type="submit" className="botao-principal" style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '1rem' }}>
                   {servicoEmEdicao ? 'Atualizar Serviço' : 'Salvar Serviço'}
                 </button>
-                
+
                 {servicoEmEdicao && (
-                  <button type="button" className="botao-secundario" 
-                          onClick={resetFormulario}
-                          style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '0.5rem' }}>
+                  <button type="button" className="botao-secundario"
+                    onClick={resetFormulario}
+                    style={{ border: 'none', cursor: 'pointer', width: '100%', marginTop: '0.5rem' }}>
                     Cancelar Edição
                   </button>
                 )}
@@ -179,11 +175,9 @@ function PaginaServicos() {
             </div>
           </div>
 
-          {/* ===== [COLUNA 2: LISTA (Tabela)] ===== */}
+          {/* Coluna 2: Lista */}
           <div className="lista-coluna">
-            {/* Usamos o layout de Tabela (de Vacinas) aqui */}
             <div className="dash-card">
-              {/* Agora o h3 está DENTRO do cartão branco */}
               <h3 style={{ marginBottom: '1rem' }}>Serviços Cadastrados</h3>
               <div className="tabela-container">
                 <table className="tabela-vacinas">
@@ -206,15 +200,15 @@ function PaginaServicos() {
                         <td>{servico.nome}</td>
                         <td>{servico.preco ? servico.preco.toFixed(2) : '0.00'}</td>
                         <td>
-                          <button 
+                          <button
                             className="botao-tabela"
                             onClick={() => handleEditarClick(servico)}
                             style={{ marginRight: '5px' }}
                           >
                             ✎
                           </button>
-                          <button 
-                            className="botao-tabela botao-excluir" 
+                          <button
+                            className="botao-tabela botao-excluir"
                             onClick={() => handleDelete(servico.id)}
                           >
                             &times;

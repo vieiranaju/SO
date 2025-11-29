@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// GET ALL
+// Listar todos os agendamentos
 exports.getAll = async (req, res) => {
   const agendamentos = await prisma.agendamento.findMany({
     include: { pet: true, servico: true }
@@ -9,7 +9,7 @@ exports.getAll = async (req, res) => {
   res.json(agendamentos);
 };
 
-// GET BY ID
+// Buscar agendamento por ID
 exports.getById = async (req, res) => {
   const agendamento = await prisma.agendamento.findUnique({
     where: { id: Number(req.params.id) },
@@ -19,7 +19,7 @@ exports.getById = async (req, res) => {
   res.json(agendamento);
 };
 
-// CREATE
+// Criar novo agendamento
 exports.create = async (req, res) => {
   console.log('Recebendo requisição de agendamento:', req.body);
   try {
@@ -35,9 +35,9 @@ exports.create = async (req, res) => {
         petId: parseInt(petId),
         servicoId: parseInt(servicoId),
         dataHora: new Date(dataHora),
-        status: status // (Opcional, pode vir ou usar o default)
+        status: status
       },
-      include: { pet: true, servico: true } // Devolve os nomes para o React
+      include: { pet: true, servico: true }
     });
     console.log('Agendamento criado com sucesso:', agendamento);
     res.status(201).json(agendamento);
@@ -48,7 +48,7 @@ exports.create = async (req, res) => {
   }
 };
 
-// UPDATE
+// Atualizar agendamento
 exports.update = async (req, res) => {
   try {
     const { petId, servicoId, dataHora, status } = req.body;
@@ -61,7 +61,7 @@ exports.update = async (req, res) => {
         dataHora: new Date(dataHora),
         status: status
       },
-      include: { pet: true, servico: true } // Devolve os nomes para o React
+      include: { pet: true, servico: true }
     });
     res.json(agendamento);
 
@@ -70,7 +70,7 @@ exports.update = async (req, res) => {
   }
 };
 
-// REMOVE
+// Remover agendamento
 exports.remove = async (req, res) => {
   try {
     await prisma.agendamento.delete({ where: { id: Number(req.params.id) } });
